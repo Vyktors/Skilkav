@@ -1,4 +1,4 @@
-# StormTrooper - Skillkav inc
+# StormTrooper - Skilkav inc
 
 Développement d'un jeu indépendant sous "Unity".
 
