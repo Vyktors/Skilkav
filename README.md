@@ -6,7 +6,7 @@ Développement d'un jeu indépendant sous "Unity".
 
 ## Concept du jeu
 
-Ceci est le concept du jeu! 
+hello
 
 
 ## Known issues?
