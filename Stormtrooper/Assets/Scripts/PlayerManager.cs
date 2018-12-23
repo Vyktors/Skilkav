@@ -3,14 +3,15 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
+
 //Script managing players
 
 public class PlayerManager : MonoBehaviour {
 
     //Constante
     private readonly float TIME_MAX_IN_SLOW_MO = 0.6f;
-
-    [Tooltip("Speed of the player1, value 0 means the player1 can't move. Recommanded between 5 and 20")]
+    [Range(5,20)]
+    [Tooltip("Speed of the player1, value 0 means the player1 can't move.")]
     public float speedX;        //Change the speed value
     [Tooltip("Force of the player1 jump, value 0 means the player1 won't jump. Recommanded between 500 and 1000")]
     public float jumpSpeedY;    //Change the jump speed value
@@ -24,25 +25,19 @@ public class PlayerManager : MonoBehaviour {
 
     private Animator animator;
     private Rigidbody2D rb;
-    
-    public TimeManager timeManager;
-
-    
-   
-
+  
 	// Use this for initialization
 	void Start ()
     {
         animator = GetComponent<Animator>();
-        rb = GetComponent<Rigidbody2D>();
-        timeManager = new TimeManager();
+        rb = GetComponent<Rigidbody2D>();        
 
         facingRight = false;
         canDoubleJump = false;
 	}
 	
 	// Update is called once per frame
-	void Update ()
+	void FixedUpdate ()
     {        
         MovePlayer(speed); //handle player1 movement
         Flip();            //change the direction of the animation if needed
@@ -52,7 +47,7 @@ public class PlayerManager : MonoBehaviour {
         {
             speed = -speedX;
         }        
-        if(Input.GetKeyUp(controlLeft) && !Input.GetKey(controlUp))
+        if(Input.GetKeyUp(controlLeft) )//&& !Input.GetKey(controlUp))
         {
             speed = 0;
         }
@@ -62,7 +57,7 @@ public class PlayerManager : MonoBehaviour {
         {
             speed = speedX;            
         }
-        if (Input.GetKeyUp(controlRight) && !Input.GetKey(controlUp))
+        if (Input.GetKeyUp(controlRight))//  && !Input.GetKey(controlUp))
         {
             speed = 0;
         }
@@ -101,15 +96,8 @@ public class PlayerManager : MonoBehaviour {
         if(playerSpeed == 0 && isGrounded)
         {
             animator.SetInteger("State", 0); //Set State to Idle0(idle)
-        }
-        if (!Input.GetKey(controlUp))
-        {
-            rb.velocity = new Vector3(speed, rb.velocity.y, 0); //Move horizontal movement player
-        }else
-        {
-            rb.velocity = new Vector2(rb.velocity.x, rb.velocity.y);
-        }
-        
+        }                
+        rb.velocity = new Vector3(speed, rb.velocity.y, 0); //Move horizontal movement player                
     }
 
     //Flip the player direction
@@ -133,18 +121,36 @@ public class PlayerManager : MonoBehaviour {
         {
             if(!isGrounded)
             {
-                Debug.Log("Collision Player");
+                ContactPoint2D[] ContactArr = new ContactPoint2D[1];
+                other.GetContacts(ContactArr);
+                Vector2 normal = ContactArr[0].normal;                
+                float tan = normal.y / normal.x;      
+                
+                //Vertical Collision
+                if(Math.Abs(tan) > (Math.Sqrt(2) / 2))
+                {
+
+                }//Horizontal Collision
+                else
+                {
+
+                }
+
                 canDoubleJump = true;
-                StartCoroutine(timeManager.DoSlowMotion(TIME_MAX_IN_SLOW_MO));
+                StartCoroutine(TimeManager.GetInstance().DoSlowMotion(TIME_MAX_IN_SLOW_MO));
             }                       
         }        
     }
 
     void OnCollisionExit2D(Collision2D other)
     {
+        
+
         if (other.gameObject.tag == "Player")
         {
-            timeManager.ExitSlowMotion();
+            
+
+            TimeManager.GetInstance().ExitSlowMotion();
         }
     }
 
@@ -152,7 +158,7 @@ public class PlayerManager : MonoBehaviour {
     {
         if (other.gameObject.tag == "SlowMoObjects")
         {
-            timeManager.DoSlowMotion();
+            TimeManager.GetInstance().DoSlowMotion();
         }
     }
 
@@ -160,7 +166,7 @@ public class PlayerManager : MonoBehaviour {
     {
         if(other.gameObject.tag == "SlowMoObjects")
         {
-            timeManager.ExitSlowMotion();
+            TimeManager.GetInstance().ExitSlowMotion();
         }
     }
 
