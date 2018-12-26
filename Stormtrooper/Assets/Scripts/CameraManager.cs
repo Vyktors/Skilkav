@@ -7,13 +7,14 @@ using UnityEngine;
 /*smoothSpeed change the camera speed, closer the value 0, more the camera stick to the player1 or the exact center of the two player*/
 /*The positionY axis can be unlocked*/
 
-public class CameraManager : MonoBehaviour {
+public class CameraManager : MonoBehaviour
+{
     [Header("Players")]
     [Tooltip("Set the objects that the camera follows")]
     public GameObject player1;   //Object(player1) that the camera follows
     public GameObject player2;   //Object(player2) 
 
-    [Header("Camera's position settings ")]
+    [Header("Camera's position settings")]
     [Tooltip("Speed the camera will catch with the object's position in the X axis")]
     public float smoothSpeedX;   //Speed on X axis
     [Tooltip("Speed the camera will catch with the object's position in the Y axis")]
@@ -24,29 +25,34 @@ public class CameraManager : MonoBehaviour {
     public float yHeight;       //Set the height of the camera if it's locked on
 
     [Header("Camera's size settings ")]
-    public float minLengthSize = 5;
-    public float maxLengthSize = 7.3f;
-   
+    public float minLengthSize = 5f;
+    public float maxLengthSize = 10f;
+    [Tooltip("Set the distance beetween the limit of the camera and the player in the X axis")]
+    public float sightMinX = 2f;
+    [Tooltip("Set the distance beetween the limit of the camera and the player in the Y axis")]
+    public float sightMinY = 2f;
+
+
+    private const float RATIO_DST_CAMSIZE_X = 0.24f;
+    private const float RATIO_DST_CAMSIZE_Y = 0.5f;
     private Camera cam;
     private Vector2 velocity;
 
-	// Use this for initialization
-	void Start ()
+    // Use this for initialization
+    void Start()
     {
         cam = GetComponent<Camera>();
-        setPosition();
-
-        setSize();
+        SetPosition();
+        SetSize();
     }
 
     void FixedUpdate()
-    {            
-        setPosition();
-        
-        setSize();
+    {
+        SetPosition();
+        SetSize();
     }
 
-    private void setPosition()
+    private void SetPosition()
     {
         //Determine the middle point beetween the two players
         float middleX = (player1.transform.position.x + player2.transform.position.x) * 0.5f;
@@ -67,18 +73,38 @@ public class CameraManager : MonoBehaviour {
         }
     }
 
-    private void setSize()
+    //** Make more funcion
+    //* The distances(X,Y) beetween the two players need to be calculated differently 
+    //** Différentier le smoothspeed pour le size?
+    private void SetSize()
     {
+        float newSize;
         //Distance beetween players
         float lengthX = Mathf.Abs(player1.transform.position.x - player2.transform.position.x);
+        float lengthY = Mathf.Abs(player1.transform.position.y - player2.transform.position.y);
 
-        //Math function to get good ratio beetween the distance and the size
-        float newSize =  lengthX * .5f - 2.5f;
-
-
-        if (newSize > minLengthSize && newSize < maxLengthSize)
+        //Math function to get good ratio beetween the distance and the size, smoothly
+        float newSizeX = Mathf.MoveTowards(cam.orthographicSize, RATIO_DST_CAMSIZE_X * lengthX + sightMinX, smoothSpeedX); //, AX+ B where, A equation for ratio disBetWPlayer/SizeCam, B dst BetW limite and Player
+        float newSizeY = Mathf.MoveTowards(cam.orthographicSize, RATIO_DST_CAMSIZE_Y * lengthY + sightMinY, smoothSpeedY);
+        
+        //Take the greater Size
+        if (newSizeX > newSizeY)
         {
-            cam.orthographicSize = newSize;
+            newSize = newSizeX;
         }
+        else{
+            newSize = newSizeY;
+        }       
+        
+        //If the newSize is out of limits, change newSize for the limit itself.
+        if (newSize > maxLengthSize)
+        {
+            newSize = Mathf.MoveTowards(cam.orthographicSize, maxLengthSize, smoothSpeedX);
+        }
+        if (newSize < minLengthSize)
+        {
+            newSize = Mathf.MoveTowards(cam.orthographicSize, minLengthSize, smoothSpeedX);
+        }
+        cam.orthographicSize = newSize;
     }
 }
