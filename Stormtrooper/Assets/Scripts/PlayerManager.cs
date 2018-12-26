@@ -9,10 +9,11 @@ using UnityEngine;
 public class PlayerManager : MonoBehaviour {
 
     //Constante
-    private readonly float TIME_MAX_IN_SLOW_MO = 0.6f;
+    private static readonly float TIME_MAX_IN_SLOW_MO = 0.6f;
     [Range(5,20)]
     [Tooltip("Speed of the player1, value 0 means the player1 can't move.")]
     public float speedX;        //Change the speed value
+    public float midAirAccelX;
     [Tooltip("Force of the player1 jump, value 0 means the player1 won't jump. Recommanded between 500 and 1000")]
     public float jumpSpeedY;    //Change the jump speed value
 
@@ -22,54 +23,36 @@ public class PlayerManager : MonoBehaviour {
     private float speed;
 
     public KeyCode controlLeft,controlRight, controlUp, controlDown;
+    private enum KeyEvent { KEY_DOWN, KEY, KEY_UP };
+    private enum HDirection { LEFT, RIGHT };
 
     private Animator animator;
     private Rigidbody2D rb;
-  
+
+    public CollisionObject collision;
+
 	// Use this for initialization
 	void Start ()
     {
         animator = GetComponent<Animator>();
-        rb = GetComponent<Rigidbody2D>();        
+        rb = GetComponent<Rigidbody2D>();
 
         facingRight = false;
         canDoubleJump = false;
 	}
-	
+
 	// Update is called once per frame
 	void FixedUpdate ()
-    {        
-        MovePlayer(speed); //handle player1 movement
+    {
+        MovePlayer(); //handle player1 movement
         Flip();            //change the direction of the animation if needed
-        
-        //left player1 movement
-        if(Input.GetKey(controlLeft))
-        {
-            speed = -speedX;
-        }        
-        if(Input.GetKeyUp(controlLeft) )//&& !Input.GetKey(controlUp))
-        {
-            speed = 0;
-        }
-
-        //right player1 movement
-        if (Input.GetKey(controlRight))
-        {
-            speed = speedX;            
-        }
-        if (Input.GetKeyUp(controlRight))//  && !Input.GetKey(controlUp))
-        {
-            speed = 0;
-        }
 
         //player1 jump
-        if(Input.GetKeyDown(controlUp) && (isGrounded || canDoubleJump) )
+        if(GetInputKey(controlUp, KeyEvent.KEY_DOWN) && (isGrounded || canDoubleJump) )
         {
             Jump();
-            //Propulse();
-            Debug.Log("Jumping");            
         }
-        
+
     }
 
     private void Jump()
@@ -79,25 +62,68 @@ public class PlayerManager : MonoBehaviour {
     }
 
     //TEST PROPULSION VELOCITY
-    private void Propulse()
+    private void Propulse(HDirection direction)
     {
-        rb.velocity = (new Vector2(10, jumpSpeedY + 10)); //add a velocity Y
-        
+        rb.velocity = (new Vector2(((direction == HDirection.RIGHT) ? 1 : -1) * speedX * 3.0f, jumpSpeedY * 1.25f)); //add a velocity Y
+
         canDoubleJump = false;
     }
 
     //Code for player movement
-    private void MovePlayer(float playerSpeed)
+    private void MovePlayer()
     {
-        if(playerSpeed < 0 && isGrounded || playerSpeed > 0 && isGrounded)
+        bool rightKey = Input.GetKey(controlRight);
+        bool leftKey = Input.GetKey(controlLeft);
+
+        Rigidbody2D rigidBody = GetComponent<Rigidbody2D>();
+        float velocityX = rigidBody.velocity.x;
+
+        if (rightKey == leftKey || Math.Abs(velocityX) > speedX)
         {
-            animator.SetInteger("State", 1); //Set State to Idle1(walk)
+            if (isGrounded)
+            {
+                velocityX = 0;
+            }
+            else
+            {
+                if (velocityX < 0)
+                {
+                    velocityX = Mathf.Clamp(velocityX + Time.deltaTime * midAirAccelX, float.NegativeInfinity, 0);
+                }
+                else if (velocityX > 0)
+                {
+                    velocityX = Mathf.Clamp(velocityX - Time.deltaTime * midAirAccelX, 0, float.PositiveInfinity);
+                }
+            }
         }
-        if(playerSpeed == 0 && isGrounded)
+        else if (rightKey && !leftKey)
         {
-            animator.SetInteger("State", 0); //Set State to Idle0(idle)
-        }                
-        rb.velocity = new Vector3(speed, rb.velocity.y, 0); //Move horizontal movement player                
+            if (isGrounded)
+            {
+                velocityX = speedX;
+            }
+            else
+            {
+                velocityX += Time.deltaTime * midAirAccelX;
+                velocityX = Mathf.Clamp(velocityX, -speedX, speedX);
+            }
+        }
+        else if (!rightKey && leftKey)
+        {
+            if (isGrounded)
+            {
+                velocityX = -speedX;
+            }
+            else
+            {
+                velocityX -= Time.deltaTime * midAirAccelX;
+                velocityX = Mathf.Clamp(velocityX, -speedX, speedX);
+            }
+        }
+
+        //velocityX = Mathf.Clamp(velocityX, -speedX, speedX);
+        rigidBody.velocity = new Vector2(velocityX, rigidBody.velocity.y);
+        speed = rigidBody.velocity.x;
     }
 
     //Flip the player direction
@@ -106,7 +132,7 @@ public class PlayerManager : MonoBehaviour {
         if(speed > 0 && !facingRight || speed < 0 && facingRight)
         {
             facingRight = !facingRight;
-            
+
             Vector3 temp = transform.localScale;
             temp.x *= -1;
 
@@ -116,41 +142,48 @@ public class PlayerManager : MonoBehaviour {
 
     //When the player enter in collision with other Collider2D
     void OnCollisionEnter2D(Collision2D other)
-    {        
+    {
         if(other.gameObject.tag == "Player")
         {
-            if(!isGrounded)
-            {
-                ContactPoint2D[] ContactArr = new ContactPoint2D[1];
-                other.GetContacts(ContactArr);
-                Vector2 normal = ContactArr[0].normal;                
-                float tan = normal.y / normal.x;      
-                
-                //Vertical Collision
-                if(Math.Abs(tan) > (Math.Sqrt(2) / 2))
-                {
+            canDoubleJump = true;
 
-                }//Horizontal Collision
-                else
-                {
+            if (isGrounded || other.gameObject.GetComponent<PlayerManager>().isGrounded)
+                return;
 
-                }
+            ContactPoint2D contactPoint = other.GetContact(0);
+            // La normale pointe vers l'objet courant.
+            Vector2 normal = contactPoint.normal;
 
-                canDoubleJump = true;
-                StartCoroutine(TimeManager.GetInstance().DoSlowMotion(TIME_MAX_IN_SLOW_MO));
-            }                       
-        }        
+            // Vertical Collision if angle greater than 45°
+            float tan = normal.y / normal.x;
+            bool isVerticalCollision = Math.Abs(tan) > (Math.Sqrt(2) / 2);
+
+            // In a vertical collision, first collider is on the left and the
+            // second is on the right. In a vertical collisition, the first collider
+            // is on the top and the second is at the bottom.
+            bool isFirstCollider = isVerticalCollision ? (contactPoint.normal.y > 0)
+                                                       : (contactPoint.normal.x < 0);
+
+            PlayerManager otherPlayerManager = other.gameObject.GetComponent<PlayerManager>();
+
+            PlayerManager firstCollider = isFirstCollider ? this : otherPlayerManager;
+            PlayerManager otherCollider = isFirstCollider ? otherPlayerManager : this;
+
+            if (CollisionManager.GetCollisionObject(firstCollider, otherCollider) != null)
+                // Collision déjà initiée par l'autre objet.
+                return;
+
+            EnterComboState(firstCollider, otherCollider, isVerticalCollision);
+        }
     }
 
     void OnCollisionExit2D(Collision2D other)
     {
-        
+
 
         if (other.gameObject.tag == "Player")
         {
-            
-
-            TimeManager.GetInstance().ExitSlowMotion();
+            TimeManager.ExitSlowMotion();
         }
     }
 
@@ -158,7 +191,7 @@ public class PlayerManager : MonoBehaviour {
     {
         if (other.gameObject.tag == "SlowMoObjects")
         {
-            TimeManager.GetInstance().DoSlowMotion();
+            TimeManager.DoSlowMotion();
         }
     }
 
@@ -166,10 +199,161 @@ public class PlayerManager : MonoBehaviour {
     {
         if(other.gameObject.tag == "SlowMoObjects")
         {
-            TimeManager.GetInstance().ExitSlowMotion();
+            TimeManager.ExitSlowMotion();
         }
     }
 
-    
+    private bool GetInputKey(KeyCode keyCode, KeyEvent keyEvent)
+    {
+        // Pendant la collision, la gestion du Input est faite par la collision.
+        if (collision != null)
+            return false;
 
+        switch (keyEvent)
+        {
+            case KeyEvent.KEY:
+                return Input.GetKey(keyCode);
+            case KeyEvent.KEY_DOWN:
+                return Input.GetKeyDown(keyCode);
+            case KeyEvent.KEY_UP:
+                return Input.GetKeyUp(keyCode);
+            default:
+                return false;
+        }
+    }
+
+    static void EnterComboState(PlayerManager firstCollider, PlayerManager secondCollider, bool isVerticalCollision)
+    {
+        CollisionObject collision = CollisionManager.CreateCollisionObject(firstCollider, secondCollider);
+
+        firstCollider.collision = collision;
+        secondCollider.collision = collision;
+
+        firstCollider.StartCoroutine(ComboStateCoroutine(firstCollider, secondCollider, isVerticalCollision));
+    }
+
+    static private IEnumerator ComboStateCoroutine(PlayerManager firstPlayer, PlayerManager secondPlayer, bool isVerticalCollision)
+    {
+        firstPlayer.StartCoroutine(TimeManager.DoSlowMotion(TIME_MAX_IN_SLOW_MO));
+
+        KeyCode[] firstPlayerKeys = { firstPlayer.controlLeft, firstPlayer.controlRight,
+                                     firstPlayer.controlUp, firstPlayer.controlDown };
+        KeyCode[] secondPlayerKeys = { secondPlayer.controlLeft, secondPlayer.controlRight,
+                                      secondPlayer.controlUp, secondPlayer.controlDown };
+
+        List<KeyCode> firstPlayerEnteredKeys = new List<KeyCode>();
+        List<KeyCode> secondPlayerEnteredKeys = new List<KeyCode>();
+        while (true)
+        {
+            //Listen to first player input.
+            for (int i = 0; i < firstPlayerKeys.Length; i++)
+            {
+                if (Input.GetKeyUp(firstPlayerKeys[i]))
+                    firstPlayerEnteredKeys.Remove(firstPlayerKeys[i]);
+                if (Input.GetKeyDown(firstPlayerKeys[i]))
+                    firstPlayerEnteredKeys.Add(firstPlayerKeys[i]);
+            }
+
+            //Listen to second player input.
+            for (int i = 0; i < secondPlayerKeys.Length; i++)
+            {
+                if (Input.GetKeyUp(secondPlayerKeys[i]))
+                    secondPlayerEnteredKeys.Remove(secondPlayerKeys[i]);
+                if (Input.GetKeyDown(secondPlayerKeys[i]))
+                    secondPlayerEnteredKeys.Add(secondPlayerKeys[i]);
+            }
+
+            if (!TimeManager.isSlowedDown)
+                break;
+
+            if (firstPlayerEnteredKeys.Count != 0 && secondPlayerEnteredKeys.Count != 0)
+                break;
+
+            yield return null;
+            continue;
+        }
+
+        TimeManager.ExitSlowMotion();
+
+        // Process key combination.
+
+        if (!isVerticalCollision)
+        {
+            if (firstPlayerEnteredKeys.Contains(firstPlayer.controlRight) && secondPlayerEnteredKeys.Contains(secondPlayer.controlRight))
+            {
+                Debug.Log("Propulse RIGHT");
+                secondPlayer.Propulse(HDirection.RIGHT);
+            }
+
+            if (firstPlayerEnteredKeys.Contains(firstPlayer.controlLeft) && secondPlayerEnteredKeys.Contains(secondPlayer.controlLeft))
+            {
+                Debug.Log("Propulse LEFT");
+                firstPlayer.Propulse(HDirection.LEFT);
+            }
+        }
+
+        ExitComboState(firstPlayer, secondPlayer);
+    }
+    static void ExitComboState(PlayerManager firstCollider, PlayerManager secondCollider)
+    {
+        firstCollider.collision = null;
+        secondCollider.collision = null;
+
+        CollisionManager.DeleteCollisionObject(firstCollider, secondCollider);
+
+        firstCollider.canDoubleJump = true;
+        secondCollider.canDoubleJump = true;
+    }
+
+    void UpdateHorizontalMovement()
+    {
+        bool rightKey = Input.GetKey(controlRight);
+        bool leftKey = Input.GetKey(controlLeft);
+
+        Rigidbody2D rigidBody = GetComponent<Rigidbody2D>();
+        float velocityX = rigidBody.velocity.x;
+
+        if (rightKey && !leftKey)
+        {
+            if (isGrounded)
+            {
+                velocityX = speedX;
+            }
+            else
+            {
+                velocityX += Time.deltaTime * midAirAccelX;
+            }
+        }
+        else if (!rightKey && leftKey)
+        {
+            if (isGrounded)
+            {
+                velocityX = -speedX;
+            }
+            else
+            {
+                velocityX -= Time.deltaTime * midAirAccelX;
+            }
+        }
+        else if (rightKey == leftKey)
+        {
+            if (isGrounded)
+            {
+                velocityX = 0;
+            }
+            else
+            {
+                if (velocityX < 0)
+                {
+                    velocityX = Mathf.Clamp(velocityX + Time.deltaTime * midAirAccelX, float.NegativeInfinity, 0);
+                }
+                else if (velocityX > 0)
+                {
+                    velocityX = Mathf.Clamp(velocityX - Time.deltaTime * midAirAccelX, 0, float.PositiveInfinity);
+                }
+            }
+        }
+        velocityX = Mathf.Clamp(velocityX, -speedX, speedX);
+        rigidBody.velocity = new Vector2(velocityX, rigidBody.velocity.y);
+    }
 }
