@@ -7,7 +7,8 @@ using UnityEngine;
 /*smoothSpeed change the camera speed, closer the value 0, more the camera stick to the player1 or the exact center of the two player*/
 /*The positionY axis can be unlocked*/
 
-public class CameraManager : MonoBehaviour {
+public class CameraManager : MonoBehaviour
+{
     [Header("Players")]
     [Tooltip("Set the objects that the camera follows")]
     public GameObject player1;   //Object(player1) that the camera follows
@@ -25,28 +26,26 @@ public class CameraManager : MonoBehaviour {
 
     [Header("Camera's size settings ")]
     public float minLengthSize = 5;
-    public float maxLengthSize = 7.3f;
-   
+    public float maxLengthSize = 10f;
+
     private Camera cam;
     private Vector2 velocity;
 
-	// Use this for initialization
-	void Start ()
+    // Use this for initialization
+    void Start()
     {
         cam = GetComponent<Camera>();
-        setPosition();
-
-        setSize();
+        SetPosition();
+        SetSize();
     }
 
     void FixedUpdate()
-    {            
-        setPosition();
-        
-        setSize();
+    {
+        SetPosition();
+        SetSize();
     }
 
-    private void setPosition()
+    private void SetPosition()
     {
         //Determine the middle point beetween the two players
         float middleX = (player1.transform.position.x + player2.transform.position.x) * 0.5f;
@@ -67,18 +66,21 @@ public class CameraManager : MonoBehaviour {
         }
     }
 
-    private void setSize()
+    private void SetSize()
     {
         //Distance beetween players
         float lengthX = Mathf.Abs(player1.transform.position.x - player2.transform.position.x);
 
         //Math function to get good ratio beetween the distance and the size
-        float newSize =  lengthX * .5f - 2.5f;
-
-
-        if (newSize > minLengthSize && newSize < maxLengthSize)
+        float newSize = Mathf.MoveTowards(cam.orthographicSize, lengthX * .5f - 2.5f, smoothSpeedX);
+        if (newSize > maxLengthSize)
         {
-            cam.orthographicSize = newSize;
+            newSize = Mathf.MoveTowards(cam.orthographicSize, maxLengthSize, smoothSpeedX);
         }
+        if (newSize < minLengthSize)
+        {
+            newSize = Mathf.MoveTowards(cam.orthographicSize, minLengthSize, smoothSpeedX);
+        }
+        cam.orthographicSize = newSize;
     }
 }
