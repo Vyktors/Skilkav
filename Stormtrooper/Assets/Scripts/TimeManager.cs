@@ -3,42 +3,35 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class TimeManager : MonoBehaviour {
+public static class TimeManager {
 
-	public float slowDownFactor = 0.05f;
+	public const float SLOW_FACTOR = 0.05f;
 
-    private float fixedDeltaTimeReset;
+    public static bool isSlowedDown = false;
 
-    void Start()
-    {
-        fixedDeltaTimeReset = Time.fixedDeltaTime;
-        Debug.Log(fixedDeltaTimeReset); //0.0167f
+	public static void DoSlowMotion(){
+        if (isSlowedDown)
+            return;
+
+        Time.timeScale *= SLOW_FACTOR;
+        Time.fixedDeltaTime *= SLOW_FACTOR;
+        isSlowedDown = true;
     }
 
-    void Update()
-	{     
-		Time.timeScale = Mathf.Clamp(Time.timeScale, 0f, 1f);
-	}	
-
-	public void DoSlowMotion(){
-		Time.timeScale = slowDownFactor;	
-		Time.fixedDeltaTime = Time.timeScale * .02f;	
-	}
-
-    public IEnumerator DoSlowMotion(float timeInSlowMo)
+    public static IEnumerator DoSlowMotion(float timeInSlowMo)
     {
-        
         DoSlowMotion();
-        yield return new WaitForSeconds(timeInSlowMo * slowDownFactor);
+        yield return new WaitForSeconds(timeInSlowMo * SLOW_FACTOR);
         ExitSlowMotion();
-        
     }
 
-    public void ExitSlowMotion()
+    public static void ExitSlowMotion()
     {
-        Time.timeScale = 1f;
-        Time.fixedDeltaTime = fixedDeltaTimeReset;
+        if (!isSlowedDown)
+            return;
+
+        Time.timeScale /= SLOW_FACTOR;
+        Time.fixedDeltaTime /= SLOW_FACTOR;
+        isSlowedDown = false;
     }
-
-
 }
