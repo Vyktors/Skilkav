@@ -14,7 +14,7 @@ public class CameraManager : MonoBehaviour
     public GameObject player1;   //Object(player1) that the camera follows
     public GameObject player2;   //Object(player2) 
 
-    [Header("Camera's position settings ")]
+    [Header("Camera's position settings")]
     [Tooltip("Speed the camera will catch with the object's position in the X axis")]
     public float smoothSpeedX;   //Speed on X axis
     [Tooltip("Speed the camera will catch with the object's position in the Y axis")]
@@ -66,13 +66,28 @@ public class CameraManager : MonoBehaviour
         }
     }
 
+    //** Make more funcion
     private void SetSize()
     {
+        float newSize;
         //Distance beetween players
         float lengthX = Mathf.Abs(player1.transform.position.x - player2.transform.position.x);
+        float lengthY = Mathf.Abs(player1.transform.position.y - player2.transform.position.y);
 
-        //Math function to get good ratio beetween the distance and the size
-        float newSize = Mathf.MoveTowards(cam.orthographicSize, lengthX * .5f - 2.5f, smoothSpeedX);
+        //Math function to get good ratio beetween the distance and the size, smoothly
+        float newSizeX = Mathf.MoveTowards(cam.orthographicSize, lengthX * .5f - 2.5f, smoothSpeedX); //** Get a better way to get good values, not hardcoded
+        float newSizeY = Mathf.MoveTowards(cam.orthographicSize, lengthY * .5f + 1f , smoothSpeedY);
+        
+        //Take the greater Size
+        if (newSizeX > newSizeY)
+        {
+            newSize = newSizeX;
+        }
+        else{
+            newSize = newSizeY;
+        }       
+
+        //If the newSize is out of limits, change newSize for the limit itself.
         if (newSize > maxLengthSize)
         {
             newSize = Mathf.MoveTowards(cam.orthographicSize, maxLengthSize, smoothSpeedX);
