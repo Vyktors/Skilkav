@@ -25,9 +25,16 @@ public class CameraManager : MonoBehaviour
     public float yHeight;       //Set the height of the camera if it's locked on
 
     [Header("Camera's size settings ")]
-    public float minLengthSize = 5;
+    public float minLengthSize = 5f;
     public float maxLengthSize = 10f;
+    [Tooltip("Set the distance beetween the limit of the camera and the player in the X axis")]
+    public float sightMinX = 2f;
+    [Tooltip("Set the distance beetween the limit of the camera and the player in the Y axis")]
+    public float sightMinY = 2f;
 
+
+    private const float RATIO_DST_CAMSIZE_X = 0.24f;
+    private const float RATIO_DST_CAMSIZE_Y = 0.5f;
     private Camera cam;
     private Vector2 velocity;
 
@@ -67,6 +74,8 @@ public class CameraManager : MonoBehaviour
     }
 
     //** Make more funcion
+    //* The distances(X,Y) beetween the two players need to be calculated differently 
+    //** Différentier le smoothspeed pour le size?
     private void SetSize()
     {
         float newSize;
@@ -75,8 +84,8 @@ public class CameraManager : MonoBehaviour
         float lengthY = Mathf.Abs(player1.transform.position.y - player2.transform.position.y);
 
         //Math function to get good ratio beetween the distance and the size, smoothly
-        float newSizeX = Mathf.MoveTowards(cam.orthographicSize, lengthX * .5f - 2.5f, smoothSpeedX); //** Get a better way to get good values, not hardcoded
-        float newSizeY = Mathf.MoveTowards(cam.orthographicSize, lengthY * .5f + 1f , smoothSpeedY);
+        float newSizeX = Mathf.MoveTowards(cam.orthographicSize, RATIO_DST_CAMSIZE_X * lengthX + sightMinX, smoothSpeedX); //, AX+ B where, A equation for ratio disBetWPlayer/SizeCam, B dst BetW limite and Player
+        float newSizeY = Mathf.MoveTowards(cam.orthographicSize, RATIO_DST_CAMSIZE_Y * lengthY + sightMinY, smoothSpeedY);
         
         //Take the greater Size
         if (newSizeX > newSizeY)
@@ -86,7 +95,7 @@ public class CameraManager : MonoBehaviour
         else{
             newSize = newSizeY;
         }       
-
+        
         //If the newSize is out of limits, change newSize for the limit itself.
         if (newSize > maxLengthSize)
         {
