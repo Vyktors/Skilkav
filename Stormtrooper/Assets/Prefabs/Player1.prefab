@@ -51,7 +51,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   speedX: 5
-  midAirAccelX: -100.13
   jumpSpeedY: 0.8
   aerialControlSpeed: 0.1
   playerNumber: 1
@@ -61,7 +60,7 @@ MonoBehaviour:
   controlLeft: 97
   controlRight: 100
   controlUp: 119
-  controlDown: 0
+  controlDown: 115
 --- !u!212 &212077000893422750
 SpriteRenderer:
   m_ObjectHideFlags: 0
@@ -133,7 +132,7 @@ Rigidbody2D:
   m_Material: {fileID: 0}
   m_Interpolate: 0
   m_SleepingMode: 1
-  m_CollisionDetection: 0
+  m_CollisionDetection: 1
   m_Constraints: 4
 --- !u!61 &61810155847391896
 BoxCollider2D:

@@ -9,7 +9,7 @@ using UnityEngine;
 public class PlayerManager : MonoBehaviour {
 
     //Constante
-    private static readonly float TIME_MAX_IN_SLOW_MO = 0.6f;
+    private static readonly float TIME_MAX_IN_SLOW_MO = 1f;
     [Range(5, 20)]
     [Tooltip("Speed of the player1, value 0 means the player1 can't move.")]
     public float speedX = 6;        //Change the speed value
@@ -18,12 +18,13 @@ public class PlayerManager : MonoBehaviour {
     public float aerialControlSpeed = 0.1f; //Change how the player has control when jumping
     public float playerNumber;
 
-    public  bool facingRight, isGrounded, canDoubleJump;
+    public  bool facingRight, isGrounded, canDoubleJump, inComboState;
     private float speed;
 
     public KeyCode controlLeft,controlRight, controlUp, controlDown;
     private enum KeyEvent { KEY_DOWN, KEY, KEY_UP };
     private enum HDirection { LEFT, RIGHT, UP ,DOWN };
+
 
     private Animator animator;
     private Rigidbody2D rb;
@@ -38,6 +39,7 @@ public class PlayerManager : MonoBehaviour {
 
         facingRight = false;
         canDoubleJump = false;
+        inComboState = false;
 	}
 
 
@@ -53,14 +55,17 @@ public class PlayerManager : MonoBehaviour {
 	// Update is called once per frame
 	void FixedUpdate ()
     {
-        MovePlayer();      //handle player1 movement
-        Flip();            //change the direction of the animation if needed
+        if (!inComboState)
+        {
+            MovePlayer();      //handle player1 movement
+            Flip();            //change the direction of the animation if needed
+        }
     }
 
     private void Jump()
     {
         rb.velocity = (new Vector2(rb.velocity.x, jumpSpeedY)); //add a velocity Y
-        canDoubleJump = false;
+        //canDoubleJump = false;
     }
 
     //TEST PROPULSION VELOCITY
@@ -152,11 +157,6 @@ public class PlayerManager : MonoBehaviour {
     {
         if(other.gameObject.tag == "Player")
         {
-            canDoubleJump = true;
-
-            if (isGrounded || other.gameObject.GetComponent<PlayerManager>().isGrounded)
-                return;
-
             ContactPoint2D contactPoint = other.GetContact(0);
             // La normale pointe vers l'objet courant.
             Vector2 normal = contactPoint.normal;
@@ -164,6 +164,18 @@ public class PlayerManager : MonoBehaviour {
             // Vertical Collision if angle greater than 45°
             float tan = normal.y / normal.x;
             bool isVerticalCollision = Math.Abs(tan) > (Math.Sqrt(2) / 2);
+
+            if (isVerticalCollision)
+            {
+                canDoubleJump = true;
+            }
+            
+            //Return if one of the player is grounded
+            if (isGrounded || other.gameObject.GetComponent<PlayerManager>().isGrounded)
+                return;
+        
+
+            //Enter Combo State
 
             // In a vertical collision, first collider is on the left and the
             // second is on the right. In a vertical collisition, the first collider
@@ -179,19 +191,18 @@ public class PlayerManager : MonoBehaviour {
             if (CollisionManager.GetCollisionObject(firstCollider, otherCollider) != null)
                 // Collision déjà initiée par l'autre objet.
                 return;
-
+          
             EnterComboState(firstCollider, otherCollider, isVerticalCollision);
         }
     }
 
     void OnCollisionExit2D(Collision2D other)
     {
-
-
         if (other.gameObject.tag == "Player")
         {
             Debug.Log("Exit colision PLAYER");
             TimeManager.ExitSlowMotion();
+            inComboState = false;
             canDoubleJump = false;
         }
     }
@@ -235,8 +246,12 @@ public class PlayerManager : MonoBehaviour {
 
     static void EnterComboState(PlayerManager firstCollider, PlayerManager secondCollider, bool isVerticalCollision)
     {
-        CollisionObject collision = CollisionManager.CreateCollisionObject(firstCollider, secondCollider);
+        firstCollider.inComboState = true;
+        secondCollider.inComboState = true;
 
+
+        CollisionObject collision = CollisionManager.CreateCollisionObject(firstCollider, secondCollider);
+        
         firstCollider.collision = collision;
         secondCollider.collision = collision;
 
@@ -324,9 +339,10 @@ public class PlayerManager : MonoBehaviour {
             }
         }
 
-        ExitComboState(firstPlayer, secondPlayer);
+        
+        ExitComboState(firstPlayer, secondPlayer, isVerticalCollision);
     }
-    static void ExitComboState(PlayerManager firstCollider, PlayerManager secondCollider)
+    static void ExitComboState(PlayerManager firstCollider, PlayerManager secondCollider, bool isVerticalCollision)
     {
         firstCollider.collision = null;
         secondCollider.collision = null;
@@ -335,8 +351,14 @@ public class PlayerManager : MonoBehaviour {
 
 
         //Give player opportunity to jump after Exiting Combo.
-        //firstCollider.canDoubleJump = true;
-        //secondCollider.canDoubleJump = true;
+        if (isVerticalCollision)
+        {
+            firstCollider.canDoubleJump = true;
+            secondCollider.canDoubleJump = true;
+        }
+
+        firstCollider.inComboState = false;
+        secondCollider.inComboState = false;
     }
 
     void UpdateHorizontalMovement()

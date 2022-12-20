@@ -6,7 +6,7 @@ using UnityEngine;
 public class TimeManager : MonoBehaviour
 {
 
-	public const float SLOW_FACTOR = 0.3f;
+	public const float SLOW_FACTOR = 0.05f;
 
     public static bool isSlowedDown = false;
 
