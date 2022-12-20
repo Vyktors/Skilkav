@@ -165,18 +165,6 @@ public class PlayerManager : MonoBehaviour {
             float tan = normal.y / normal.x;
             bool isVerticalCollision = Math.Abs(tan) > (Math.Sqrt(2) / 2);
 
-            if (isVerticalCollision)
-            {
-                canDoubleJump = true;
-            }
-            
-            //Return if one of the player is grounded
-            if (isGrounded || other.gameObject.GetComponent<PlayerManager>().isGrounded)
-                return;
-        
-
-            //Enter Combo State
-
             // In a vertical collision, first collider is on the left and the
             // second is on the right. In a vertical collisition, the first collider
             // is on the top and the second is at the bottom.
@@ -191,7 +179,17 @@ public class PlayerManager : MonoBehaviour {
             if (CollisionManager.GetCollisionObject(firstCollider, otherCollider) != null)
                 // Collision déjà initiée par l'autre objet.
                 return;
-          
+
+            //Allow Top Player to jump off other.
+            if (isVerticalCollision)
+            {
+                firstCollider.canDoubleJump = true;
+            }
+            //Return if one of the player is grounded
+            if (isGrounded || other.gameObject.GetComponent<PlayerManager>().isGrounded)
+                return;
+
+            //Enter Combo State
             EnterComboState(firstCollider, otherCollider, isVerticalCollision);
         }
     }
@@ -248,7 +246,6 @@ public class PlayerManager : MonoBehaviour {
     {
         firstCollider.inComboState = true;
         secondCollider.inComboState = true;
-
 
         CollisionObject collision = CollisionManager.CreateCollisionObject(firstCollider, secondCollider);
         
@@ -354,7 +351,6 @@ public class PlayerManager : MonoBehaviour {
         if (isVerticalCollision)
         {
             firstCollider.canDoubleJump = true;
-            secondCollider.canDoubleJump = true;
         }
 
         firstCollider.inComboState = false;
