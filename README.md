@@ -29,7 +29,8 @@ Les deux joueurs appuient vers le bas.
 Les deux joueurs appuient de leur côté respectif(haut et bas).
 Autres: Rien ne se passe, gravité fait son effet.
 
-### Fission: Un joueur laisse temporairement derrière lui une partie de lui que l'autre joueur peut ensuite utiliser comme si son allié qui était encore à cet emplacement. Attention! La fission à répétition peut causer un surchauffement de votre ordinateur et ainsi la fin de la partie (ressource limitée)  
+### Fission:
+Un joueur laisse temporairement derrière lui une partie de lui que l'autre joueur peut ensuite utiliser comme si son allié qui était encore à cet emplacement. Attention! La fission à répétition peut causer un surchauffement de votre ordinateur et ainsi la fin de la partie (ressource limitée)  
 
 
 Idée originale de Mathieu Victor Guérin
