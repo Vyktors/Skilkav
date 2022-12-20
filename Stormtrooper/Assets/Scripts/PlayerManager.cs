@@ -10,13 +10,12 @@ public class PlayerManager : MonoBehaviour {
 
     //Constante
     private static readonly float TIME_MAX_IN_SLOW_MO = 0.6f;
-    [Range(5,20)]
+    [Range(5, 20)]
     [Tooltip("Speed of the player1, value 0 means the player1 can't move.")]
-    public float speedX;        //Change the speed value
-    public float midAirAccelX;
+    public float speedX = 6;        //Change the speed value
     [Tooltip("Force of the player1 jump, value 0 means the player1 won't jump. Recommanded between 500 and 1000")]
-    public float jumpSpeedY;    //Change the jump speed value
-
+    public float jumpSpeedY = 15;    //Change the jump speed value
+    public float aerialControlSpeed = 0.1f; //Change how the player has control when jumping
     public float playerNumber;
 
     public  bool facingRight, isGrounded, canDoubleJump;
@@ -24,7 +23,7 @@ public class PlayerManager : MonoBehaviour {
 
     public KeyCode controlLeft,controlRight, controlUp, controlDown;
     private enum KeyEvent { KEY_DOWN, KEY, KEY_UP };
-    private enum HDirection { LEFT, RIGHT };
+    private enum HDirection { LEFT, RIGHT, UP ,DOWN };
 
     private Animator animator;
     private Rigidbody2D rb;
@@ -41,18 +40,21 @@ public class PlayerManager : MonoBehaviour {
         canDoubleJump = false;
 	}
 
-	// Update is called once per frame
-	void FixedUpdate ()
-    {
-        MovePlayer(); //handle player1 movement
-        Flip();            //change the direction of the animation if needed
 
-        //player1 jump
-        if(GetInputKey(controlUp, KeyEvent.KEY_DOWN) && (isGrounded || canDoubleJump) )
+    void Update()
+    {
+        //player jump
+        if (GetInputKey(controlUp, KeyEvent.KEY_DOWN) && (isGrounded || canDoubleJump))
         {
             Jump();
         }
+    }
 
+	// Update is called once per frame
+	void FixedUpdate ()
+    {
+        MovePlayer();      //handle player1 movement
+        Flip();            //change the direction of the animation if needed
     }
 
     private void Jump()
@@ -67,6 +69,11 @@ public class PlayerManager : MonoBehaviour {
         rb.velocity = (new Vector2(((direction == HDirection.RIGHT) ? 1 : -1) * speedX * 3.0f, jumpSpeedY * 1.25f)); //add a velocity Y
 
         canDoubleJump = false;
+    }
+
+    private void SuperJump(HDirection direction)
+    {
+        rb.velocity = (new Vector2(rb.velocity.x, ((direction == HDirection.UP) ? 1 : -1) * jumpSpeedY * 2f));
     }
 
     //Code for player movement
@@ -88,11 +95,11 @@ public class PlayerManager : MonoBehaviour {
             {
                 if (velocityX < 0)
                 {
-                    velocityX = Mathf.Clamp(velocityX + Time.deltaTime * midAirAccelX, float.NegativeInfinity, 0);
+                    velocityX = Mathf.Clamp(velocityX , float.NegativeInfinity, 0);
                 }
                 else if (velocityX > 0)
                 {
-                    velocityX = Mathf.Clamp(velocityX - Time.deltaTime * midAirAccelX, 0, float.PositiveInfinity);
+                    velocityX = Mathf.Clamp(velocityX , 0, float.PositiveInfinity);
                 }
             }
         }
@@ -104,7 +111,7 @@ public class PlayerManager : MonoBehaviour {
             }
             else
             {
-                velocityX += Time.deltaTime * midAirAccelX;
+                velocityX += (speedX * aerialControlSpeed);
                 velocityX = Mathf.Clamp(velocityX, -speedX, speedX);
             }
         }
@@ -116,7 +123,7 @@ public class PlayerManager : MonoBehaviour {
             }
             else
             {
-                velocityX -= Time.deltaTime * midAirAccelX;
+                velocityX -= (speedX * aerialControlSpeed);
                 velocityX = Mathf.Clamp(velocityX, -speedX, speedX);
             }
         }
@@ -183,7 +190,9 @@ public class PlayerManager : MonoBehaviour {
 
         if (other.gameObject.tag == "Player")
         {
+            Debug.Log("Exit colision PLAYER");
             TimeManager.ExitSlowMotion();
+            canDoubleJump = false;
         }
     }
 
@@ -207,8 +216,10 @@ public class PlayerManager : MonoBehaviour {
     {
         // Pendant la collision, la gestion du Input est faite par la collision.
         if (collision != null)
+        {
             return false;
-
+        }
+            
         switch (keyEvent)
         {
             case KeyEvent.KEY:
@@ -290,6 +301,27 @@ public class PlayerManager : MonoBehaviour {
                 Debug.Log("Propulse LEFT");
                 firstPlayer.Propulse(HDirection.LEFT);
             }
+
+            if (firstPlayerEnteredKeys.Contains(firstPlayer.controlLeft) && secondPlayerEnteredKeys.Contains(secondPlayer.controlRight))
+            {
+                Debug.Log("Propulse EACH");
+                firstPlayer.Propulse(HDirection.LEFT);
+                secondPlayer.Propulse(HDirection.RIGHT);
+            }
+        }
+        else
+        {
+            if (firstPlayerEnteredKeys.Contains(firstPlayer.controlUp) && secondPlayerEnteredKeys.Contains(secondPlayer.controlUp))
+            {
+                Debug.Log("SuperJump UP");
+                firstPlayer.SuperJump(HDirection.UP);
+            }
+
+            if (firstPlayerEnteredKeys.Contains(firstPlayer.controlDown) && secondPlayerEnteredKeys.Contains(secondPlayer.controlDown))
+            {
+                Debug.Log("SuperJump DOWN");
+                secondPlayer.SuperJump(HDirection.DOWN);
+            }
         }
 
         ExitComboState(firstPlayer, secondPlayer);
@@ -301,8 +333,10 @@ public class PlayerManager : MonoBehaviour {
 
         CollisionManager.DeleteCollisionObject(firstCollider, secondCollider);
 
-        firstCollider.canDoubleJump = true;
-        secondCollider.canDoubleJump = true;
+
+        //Give player opportunity to jump after Exiting Combo.
+        //firstCollider.canDoubleJump = true;
+        //secondCollider.canDoubleJump = true;
     }
 
     void UpdateHorizontalMovement()
@@ -321,7 +355,7 @@ public class PlayerManager : MonoBehaviour {
             }
             else
             {
-                velocityX += Time.deltaTime * midAirAccelX;
+                velocityX += Time.deltaTime;
             }
         }
         else if (!rightKey && leftKey)
@@ -332,7 +366,7 @@ public class PlayerManager : MonoBehaviour {
             }
             else
             {
-                velocityX -= Time.deltaTime * midAirAccelX;
+                velocityX -= Time.deltaTime;
             }
         }
         else if (rightKey == leftKey)
@@ -345,11 +379,11 @@ public class PlayerManager : MonoBehaviour {
             {
                 if (velocityX < 0)
                 {
-                    velocityX = Mathf.Clamp(velocityX + Time.deltaTime * midAirAccelX, float.NegativeInfinity, 0);
+                    velocityX = Mathf.Clamp(velocityX + Time.deltaTime , float.NegativeInfinity, 0);
                 }
                 else if (velocityX > 0)
                 {
-                    velocityX = Mathf.Clamp(velocityX - Time.deltaTime * midAirAccelX, 0, float.PositiveInfinity);
+                    velocityX = Mathf.Clamp(velocityX - Time.deltaTime , 0, float.PositiveInfinity);
                 }
             }
         }
