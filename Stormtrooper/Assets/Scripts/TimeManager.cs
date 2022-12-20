@@ -3,16 +3,16 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public static class TimeManager {
+public class TimeManager : MonoBehaviour
+{
 
-	public const float SLOW_FACTOR = 0.05f;
+	public const float SLOW_FACTOR = 0.3f;
 
     public static bool isSlowedDown = false;
 
 	public static void DoSlowMotion(){
         if (isSlowedDown)
             return;
-
         Time.timeScale *= SLOW_FACTOR;
         Time.fixedDeltaTime *= SLOW_FACTOR;
         isSlowedDown = true;
